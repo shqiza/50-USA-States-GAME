@@ -1,0 +1,1531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>50 States Map Matching Game</title>
+
+<style>
+:root {
+  --bg: #f7f7f8;
+  --card: #ffffff;
+  --text: #161616;
+  --muted: #6b7280;
+  --border: #d7d9dd;
+  --accent: #2563eb;
+  --accent-light: #e8f0ff;
+  --correct: #86efac;
+  --red: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.wrapper {
+  max-width: 1100px;
+  margin: auto;
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.stats {
+  display: flex;
+  gap: 8px;
+}
+
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.message {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.rules {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 14px;
+  align-items: start;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: manipulation;
+}
+
+.state {
+  fill: white;
+  stroke: #111;
+  stroke-width: 1.2;
+  cursor: pointer;
+}
+
+.hit {
+  fill: transparent;
+  stroke: transparent;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+.label {
+  font-weight: 800;
+  fill: #111;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.names {
+  display: grid;
+  gap: 7px;
+}
+
+button {
+  font: inherit;
+}
+
+.state-button,
+.control {
+  min-height: 44px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 10px;
+  padding: 9px 10px;
+  color: var(--text);
+}
+
+.state-button {
+  text-align: left;
+  cursor: pointer;
+}
+
+.state-button.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.state-button.done {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.control {
+  width: 100%;
+  text-align: center;
+  font-weight: 650;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.control.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.practice {
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.practice-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.zoom-card {
+  margin-top: 12px;
+}
+
+.zoom-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.footer {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 10px;
+}
+
+@media (max-width: 780px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .side {
+    order: -1;
+  }
+
+  .names {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper">
+
+  <div class="header">
+    <div>
+      <h1>Match Names to the Map</h1>
+      <div class="sub">
+        Tap a state name, then tap that state on the map.
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        Score <strong id="score">0</strong>
+      </div>
+
+      <div class="stat">
+        <strong id="count">0</strong>/8
+      </div>
+    </div>
+  </div>
+
+  <div class="message">
+    <div id="message">
+      Choose a state name below.
+    </div>
+
+    <div class="rules">
+      3 misses → reveal • Red clears next round •
+      2 correct in a row removes a practice state
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <div>
+
+      <div class="card">
+        <div id="loading" class="sub" style="padding:48px;text-align:center">
+          Loading U.S. map…
+        </div>
+
+        <svg
+          id="mainMap"
+          viewBox="0 0 960 600"
+          aria-label="Interactive map of the United States"
+          hidden>
+        </svg>
+      </div>
+
+      <div class="card zoom-card">
+
+        <div class="section-title">
+          Small-state zoom
+        </div>
+
+        <div class="zoom-sub">
+          Use this for the Northeast and Mid-Atlantic states.
+        </div>
+
+        <div
+          id="zoomLoading"
+          class="sub"
+          style="padding:24px;text-align:center">
+          Loading zoom…
+        </div>
+
+        <svg
+          id="zoomMap"
+          viewBox="0 0 700 420"
+          aria-label="Zoomed map of smaller states"
+          hidden>
+        </svg>
+
+      </div>
+
+    </div>
+
+    <aside class="side">
+
+      <div class="card">
+
+        <div class="section-title">
+          State names
+        </div>
+
+        <div id="names" class="names"></div>
+
+        <div class="practice">
+
+          <div class="section-title">
+            Needs Practice
+          </div>
+
+          <div
+            id="practiceList"
+            class="sub"
+            style="font-size:12px">
+            None yet
+          </div>
+
+        </div>
+
+        <button
+          id="newRound"
+          class="control primary"
+          type="button">
+          New 8 States
+        </button>
+
+        <button
+          id="reset"
+          class="control"
+          type="button">
+          Reset Game
+        </button>
+
+      </div>
+
+    </aside>
+
+  </div>
+
+  <div class="footer">
+    Miss a state 3 times in a row and the correct state turns red.
+    Tap the red state to finish it. It stays red only for the rest
+    of that round. The state is added to Needs Practice and comes
+    back in later rounds. Get it correct twice in a row to remove
+    it. A wrong attempt resets its streak.
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+
+<script>
+(() => {
+
+const stateNames = {
+  "01":"Alabama",
+  "02":"Alaska",
+  "04":"Arizona",
+  "05":"Arkansas",
+  "06":"California",
+  "08":"Colorado",
+  "09":"Connecticut",
+  "10":"Delaware",
+  "12":"Florida",
+  "13":"Georgia",
+  "15":"Hawaii",
+  "16":"Idaho",
+  "17":"Illinois",
+  "18":"Indiana",
+  "19":"Iowa",
+  "20":"Kansas",
+  "21":"Kentucky",
+  "22":"Louisiana",
+  "23":"Maine",
+  "24":"Maryland",
+  "25":"Massachusetts",
+  "26":"Michigan",
+  "27":"Minnesota",
+  "28":"Mississippi",
+  "29":"Missouri",
+  "30":"Montana",
+  "31":"Nebraska",
+  "32":"Nevada",
+  "33":"New Hampshire",
+  "34":"New Jersey",
+  "35":"New Mexico",
+  "36":"New York",
+  "37":"North Carolina",
+  "38":"North Dakota",
+  "39":"Ohio",
+  "40":"Oklahoma",
+  "41":"Oregon",
+  "42":"Pennsylvania",
+  "44":"Rhode Island",
+  "45":"South Carolina",
+  "46":"South Dakota",
+  "47":"Tennessee",
+  "48":"Texas",
+  "49":"Utah",
+  "50":"Vermont",
+  "51":"Virginia",
+  "53":"Washington",
+  "54":"West Virginia",
+  "55":"Wisconsin",
+  "56":"Wyoming"
+};
+
+const abbreviations = {
+  Alabama:"AL",
+  Alaska:"AK",
+  Arizona:"AZ",
+  Arkansas:"AR",
+  California:"CA",
+  Colorado:"CO",
+  Connecticut:"CT",
+  Delaware:"DE",
+  Florida:"FL",
+  Georgia:"GA",
+  Hawaii:"HI",
+  Idaho:"ID",
+  Illinois:"IL",
+  Indiana:"IN",
+  Iowa:"IA",
+  Kansas:"KS",
+  Kentucky:"KY",
+  Louisiana:"LA",
+  Maine:"ME",
+  Maryland:"MD",
+  Massachusetts:"MA",
+  Michigan:"MI",
+  Minnesota:"MN",
+  Mississippi:"MS",
+  Missouri:"MO",
+  Montana:"MT",
+  Nebraska:"NE",
+  Nevada:"NV",
+  "New Hampshire":"NH",
+  "New Jersey":"NJ",
+  "New Mexico":"NM",
+  "New York":"NY",
+  "North Carolina":"NC",
+  "North Dakota":"ND",
+  Ohio:"OH",
+  Oklahoma:"OK",
+  Oregon:"OR",
+  Pennsylvania:"PA",
+  "Rhode Island":"RI",
+  "South Carolina":"SC",
+  "South Dakota":"SD",
+  Tennessee:"TN",
+  Texas:"TX",
+  Utah:"UT",
+  Vermont:"VT",
+  Virginia:"VA",
+  Washington:"WA",
+  "West Virginia":"WV",
+  Wisconsin:"WI",
+  Wyoming:"WY"
+};
+
+const zoomStates = new Set([
+  "09",
+  "10",
+  "23",
+  "24",
+  "25",
+  "33",
+  "34",
+  "36",
+  "42",
+  "44",
+  "50",
+  "51",
+  "54"
+]);
+
+const allNames = Object.values(stateNames);
+
+const mainSvg = d3.select("#mainMap");
+const zoomSvg = d3.select("#zoomMap");
+
+const namesBox =
+  document.getElementById("names");
+
+const message =
+  document.getElementById("message");
+
+const scoreEl =
+  document.getElementById("score");
+
+const countEl =
+  document.getElementById("count");
+
+const practiceEl =
+  document.getElementById("practiceList");
+
+let features = [];
+let mainPath;
+let zoomPath;
+
+let score = 0;
+
+let selectedName = null;
+
+let roundNames = [];
+
+let matched = new Set();
+
+let wrongStreak = 0;
+
+let revealedName = null;
+
+let priorityPractice = new Set();
+
+let revealedThisRound = new Set();
+
+let practiceCorrectStreak = new Map();
+
+
+
+function shuffle(array) {
+
+  const copy = array.slice();
+
+  for (
+    let i = copy.length - 1;
+    i > 0;
+    i--
+  ) {
+
+    const j =
+      Math.floor(
+        Math.random() * (i + 1)
+      );
+
+    [
+      copy[i],
+      copy[j]
+    ] = [
+      copy[j],
+      copy[i]
+    ];
+
+  }
+
+  return copy;
+}
+
+
+
+function stateName(feature) {
+
+  return stateNames[
+    String(feature.id)
+      .padStart(2,"0")
+  ];
+
+}
+
+
+
+function setMessage(text) {
+
+  message.textContent = text;
+
+}
+
+
+
+function addToPractice(name) {
+
+  priorityPractice.add(name);
+
+  practiceCorrectStreak.set(
+    name,
+    0
+  );
+
+}
+
+
+
+function resetPracticeStreak(name) {
+
+  if (
+    priorityPractice.has(name)
+  ) {
+
+    practiceCorrectStreak.set(
+      name,
+      0
+    );
+
+  }
+
+}
+
+
+
+function recordCleanCorrect(name) {
+
+  if (
+    !priorityPractice.has(name)
+  ) {
+    return null;
+  }
+
+  const next =
+    (
+      practiceCorrectStreak
+        .get(name) || 0
+    ) + 1;
+
+  practiceCorrectStreak.set(
+    name,
+    next
+  );
+
+  if (next >= 2) {
+
+    priorityPractice.delete(name);
+
+    practiceCorrectStreak
+      .delete(name);
+
+    return "removed";
+
+  }
+
+  return next;
+
+}
+
+
+
+function updatePracticeList() {
+
+  practiceEl.innerHTML = "";
+
+  if (
+    priorityPractice.size === 0
+  ) {
+
+    practiceEl.textContent =
+      "None yet";
+
+    return;
+
+  }
+
+  Array
+    .from(priorityPractice)
+    .sort()
+    .forEach(name => {
+
+      const row =
+        document.createElement("div");
+
+      row.className =
+        "practice-row";
+
+      const left =
+        document.createElement("span");
+
+      left.textContent =
+        name;
+
+      const right =
+        document.createElement("span");
+
+      right.textContent =
+        (
+          practiceCorrectStreak
+            .get(name) || 0
+        ) +
+        "/2 correct";
+
+      row.append(
+        left,
+        right
+      );
+
+      practiceEl.appendChild(
+        row
+      );
+
+    });
+
+}
+
+
+
+function renderNames() {
+
+  namesBox.innerHTML = "";
+
+  roundNames.forEach(name => {
+
+    const button =
+      document.createElement(
+        "button"
+      );
+
+    button.type = "button";
+
+    button.textContent = name;
+
+    button.className =
+      "state-button";
+
+    if (
+      matched.has(name)
+    ) {
+
+      button.disabled = true;
+
+      button.classList.add(
+        "done"
+      );
+
+    }
+
+    if (
+      selectedName === name
+    ) {
+
+      button.classList.add(
+        "selected"
+      );
+
+    }
+
+    button.addEventListener(
+      "click",
+      () => {
+
+        if (
+          matched.has(name)
+        ) {
+          return;
+        }
+
+        if (
+          selectedName !== name
+        ) {
+
+          wrongStreak = 0;
+
+        }
+
+        selectedName = name;
+
+        revealedName = null;
+
+        renderNames();
+
+        renderMaps();
+
+        setMessage(
+          "Find " +
+          name +
+          " on the map."
+        );
+
+      }
+    );
+
+    namesBox.appendChild(
+      button
+    );
+
+  });
+
+}
+
+
+
+function getFill(feature) {
+
+  const name =
+    stateName(feature);
+
+  if (
+    revealedThisRound.has(name) ||
+    revealedName === name
+  ) {
+
+    return "#dc2626";
+
+  }
+
+  if (
+    matched.has(name)
+  ) {
+
+    return "#86efac";
+
+  }
+
+  return "#ffffff";
+
+}
+
+
+
+function drawMap(
+  svg,
+  path,
+  isZoom
+) {
+
+  svg.selectAll("*").remove();
+
+  const group =
+    svg.append("g");
+
+  const visible =
+    isZoom
+      ?
+      features.filter(
+        feature =>
+          zoomStates.has(
+            String(feature.id)
+              .padStart(2,"0")
+          )
+      )
+      :
+      features;
+
+
+
+  group
+    .selectAll("path.state")
+    .data(visible)
+    .join("path")
+    .attr(
+      "class",
+      "state"
+    )
+    .attr(
+      "d",
+      path
+    )
+    .attr(
+      "fill",
+      getFill
+    )
+    .attr(
+      "tabindex",
+      0
+    )
+    .attr(
+      "role",
+      "button"
+    )
+    .attr(
+      "aria-label",
+      feature =>
+        stateName(feature)
+    )
+    .on(
+      "click",
+      chooseState
+    )
+    .on(
+      "keydown",
+      (event, feature) => {
+
+        if (
+          event.key === "Enter" ||
+          event.key === " "
+        ) {
+
+          event.preventDefault();
+
+          chooseState(
+            event,
+            feature
+          );
+
+        }
+
+      }
+    );
+
+
+
+  group
+    .selectAll("path.hit")
+    .data(visible)
+    .join("path")
+    .attr(
+      "class",
+      "hit"
+    )
+    .attr(
+      "d",
+      path
+    )
+    .attr(
+      "stroke-width",
+      isZoom ? 20 : 10
+    )
+    .on(
+      "click",
+      chooseState
+    );
+
+
+
+  const labels =
+    visible
+      .filter(feature => {
+
+        const name =
+          stateName(feature);
+
+        return (
+          matched.has(name) ||
+          revealedThisRound.has(name) ||
+          revealedName === name
+        );
+
+      })
+      .map(feature => {
+
+        const name =
+          stateName(feature);
+
+        const center =
+          path.centroid(feature);
+
+        return {
+          abbreviation:
+            abbreviations[name],
+          x:center[0],
+          y:center[1]
+        };
+
+      });
+
+
+
+  group
+    .selectAll("text.label")
+    .data(labels)
+    .join("text")
+    .attr(
+      "class",
+      "label"
+    )
+    .attr(
+      "x",
+      d => d.x
+    )
+    .attr(
+      "y",
+      d => d.y
+    )
+    .attr(
+      "font-size",
+      isZoom ? 18 : 12
+    )
+    .text(
+      d => d.abbreviation
+    );
+
+}
+
+
+
+function renderMaps() {
+
+  if (
+    features.length === 0
+  ) {
+    return;
+  }
+
+  drawMap(
+    mainSvg,
+    mainPath,
+    false
+  );
+
+  drawMap(
+    zoomSvg,
+    zoomPath,
+    true
+  );
+
+}
+
+
+
+function chooseState(
+  event,
+  feature
+) {
+
+  const clicked =
+    stateName(feature);
+
+  if (
+    !clicked ||
+    !selectedName
+  ) {
+
+    setMessage(
+      "Choose a state name first."
+    );
+
+    return;
+
+  }
+
+
+
+  if (
+    clicked === selectedName
+  ) {
+
+    const answeredName =
+      selectedName;
+
+    const wasRevealed =
+      revealedName ===
+      answeredName;
+
+    matched.add(
+      answeredName
+    );
+
+
+
+    score +=
+      wasRevealed
+        ? 5
+        : 10;
+
+
+
+    if (
+      wasRevealed
+    ) {
+
+      revealedThisRound.add(
+        answeredName
+      );
+
+      addToPractice(
+        answeredName
+      );
+
+      setMessage(
+        "That is " +
+        answeredName +
+        ". It will return for more practice."
+      );
+
+    }
+
+    else if (
+      priorityPractice.has(
+        answeredName
+      )
+    ) {
+
+      const result =
+        recordCleanCorrect(
+          answeredName
+        );
+
+      if (
+        result === "removed"
+      ) {
+
+        setMessage(
+          "Correct! " +
+          answeredName +
+          " was right twice in a row, so it has been removed from Needs Practice."
+        );
+
+      }
+
+      else {
+
+        setMessage(
+          "Correct! " +
+          answeredName +
+          " is now " +
+          result +
+          "/2 correct in a row."
+        );
+
+      }
+
+    }
+
+    else {
+
+      setMessage(
+        "Correct! " +
+        abbreviations[
+          answeredName
+        ] +
+        " = " +
+        answeredName +
+        "."
+      );
+
+    }
+
+
+
+    selectedName = null;
+
+    revealedName = null;
+
+    wrongStreak = 0;
+
+    scoreEl.textContent =
+      score;
+
+    countEl.textContent =
+      matched.size;
+
+    updatePracticeList();
+
+    renderNames();
+
+    renderMaps();
+
+
+
+    if (
+      matched.size ===
+      roundNames.length
+    ) {
+
+      setMessage(
+        "Round complete! Tap New 8 States to keep practicing."
+      );
+
+    }
+
+    return;
+
+  }
+
+
+
+  score =
+    Math.max(
+      0,
+      score - 1
+    );
+
+  wrongStreak += 1;
+
+  scoreEl.textContent =
+    score;
+
+
+
+  resetPracticeStreak(
+    selectedName
+  );
+
+  updatePracticeList();
+
+
+
+  if (
+    wrongStreak >= 3
+  ) {
+
+    revealedName =
+      selectedName;
+
+    addToPractice(
+      selectedName
+    );
+
+    updatePracticeList();
+
+    setMessage(
+      "Answer revealed: " +
+      selectedName +
+      ". Tap the red state."
+    );
+
+    renderMaps();
+
+  }
+
+  else {
+
+    const attemptsLeft =
+      3 - wrongStreak;
+
+    setMessage(
+      "Not " +
+      selectedName +
+      ". " +
+      attemptsLeft +
+      " attempt" +
+      (
+        attemptsLeft === 1
+          ? ""
+          : "s"
+      ) +
+      " left before reveal."
+    );
+
+  }
+
+}
+
+
+
+function buildRound() {
+
+  const practice =
+    shuffle(
+      Array.from(
+        priorityPractice
+      )
+    );
+
+  const chosen = [];
+
+
+
+  practice
+    .slice(0,4)
+    .forEach(name => {
+
+      chosen.push(name);
+
+    });
+
+
+
+  const remaining =
+    shuffle(
+      allNames.filter(
+        name =>
+          !chosen.includes(name)
+      )
+    );
+
+
+
+  while (
+    chosen.length < 8 &&
+    remaining.length
+  ) {
+
+    chosen.push(
+      remaining.shift()
+    );
+
+  }
+
+
+
+  return shuffle(chosen);
+
+}
+
+
+
+function newRound() {
+
+  roundNames =
+    buildRound();
+
+  matched =
+    new Set();
+
+  revealedThisRound =
+    new Set();
+
+  selectedName =
+    null;
+
+  revealedName =
+    null;
+
+  wrongStreak =
+    0;
+
+  countEl.textContent =
+    "0";
+
+
+
+  renderNames();
+
+  renderMaps();
+
+  updatePracticeList();
+
+
+
+  if (
+    priorityPractice.size
+  ) {
+
+    setMessage(
+      "New round — practice states are mixed back in. Get each one right twice in a row to remove it."
+    );
+
+  }
+
+  else {
+
+    setMessage(
+      "Choose a state name below."
+    );
+
+  }
+
+}
+
+
+
+document
+  .getElementById(
+    "newRound"
+  )
+  .addEventListener(
+    "click",
+    newRound
+  );
+
+
+
+document
+  .getElementById(
+    "reset"
+  )
+  .addEventListener(
+    "click",
+    () => {
+
+      score = 0;
+
+      priorityPractice =
+        new Set();
+
+      practiceCorrectStreak =
+        new Map();
+
+      revealedThisRound =
+        new Set();
+
+      scoreEl.textContent =
+        "0";
+
+      newRound();
+
+    }
+  );
+
+
+
+d3.json(
+  "https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-10m.json"
+)
+
+.then(us => {
+
+  features =
+    topojson
+      .feature(
+        us,
+        us.objects.states
+      )
+      .features
+      .filter(feature =>
+        stateNames[
+          String(feature.id)
+            .padStart(2,"0")
+        ]
+      );
+
+
+
+  const mainProjection =
+    d3
+      .geoAlbersUsa()
+      .fitExtent(
+        [
+          [22,22],
+          [938,578]
+        ],
+        {
+          type:
+            "FeatureCollection",
+          features
+        }
+      );
+
+  mainPath =
+    d3.geoPath(
+      mainProjection
+    );
+
+
+
+  const smallStates =
+    features.filter(
+      feature =>
+        zoomStates.has(
+          String(feature.id)
+            .padStart(2,"0")
+        )
+    );
+
+
+
+  const zoomProjection =
+    d3
+      .geoAlbers()
+      .rotate([77,0])
+      .center([0,40.5])
+      .parallels([38,42])
+      .fitExtent(
+        [
+          [24,24],
+          [676,396]
+        ],
+        {
+          type:
+            "FeatureCollection",
+          features:
+            smallStates
+        }
+      );
+
+
+
+  zoomPath =
+    d3.geoPath(
+      zoomProjection
+    );
+
+
+
+  document
+    .getElementById(
+      "loading"
+    )
+    .hidden = true;
+
+
+
+  document
+    .getElementById(
+      "zoomLoading"
+    )
+    .hidden = true;
+
+
+
+  document
+    .getElementById(
+      "mainMap"
+    )
+    .hidden = false;
+
+
+
+  document
+    .getElementById(
+      "zoomMap"
+    )
+    .hidden = false;
+
+
+
+  newRound();
+
+})
+
+.catch(error => {
+
+  console.error(error);
+
+  document
+    .getElementById(
+      "loading"
+    )
+    .textContent =
+      "The map could not load. Refresh the page and check your internet connection.";
+
+  document
+    .getElementById(
+      "zoomLoading"
+    )
+    .textContent =
+      "Zoom unavailable.";
+
+  setMessage(
+    "Map unavailable right now."
+  );
+
+});
+
+})();
+</script>
+
+</body>
+</html>
